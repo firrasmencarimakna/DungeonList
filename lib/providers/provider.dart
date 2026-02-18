@@ -9,12 +9,33 @@ class QuestProvider with ChangeNotifier {
   List<Quest> _quests = [];
   String _username = 'Petualang';
   String? _avatarUrl;
+  String _searchQuery = '';
   final NotificationService _notificationService = NotificationService();
   final _supabase = Supabase.instance.client;
 
-  List<Quest> get quests => List.unmodifiable(_quests);
+  List<Quest> get quests {
+    if (_searchQuery.isEmpty) {
+      return List.unmodifiable(_quests);
+    }
+    return List.unmodifiable(
+      _quests.where(
+        (quest) =>
+            quest.title.toLowerCase().contains(_searchQuery.toLowerCase()) ||
+            quest.description.toLowerCase().contains(
+              _searchQuery.toLowerCase(),
+            ),
+      ),
+    );
+  }
+
   String get username => _username;
   String? get avatarUrl => _avatarUrl;
+  String get searchQuery => _searchQuery;
+
+  void setSearchQuery(String query) {
+    _searchQuery = query;
+    notifyListeners();
+  }
 
   Future<void> fetchProfile() async {
     try {
