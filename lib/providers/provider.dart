@@ -1,16 +1,16 @@
 import 'dart:io';
 import 'package:flutter/material.dart';
 import '../models/quest.dart';
-import '../utils/notifications.dart';
+import '../models/note.dart';
 
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 class QuestProvider with ChangeNotifier {
   List<Quest> _quests = [];
+  List<Note> _notes = [];
   String _username = 'Petualang';
   String? _avatarUrl;
   String _searchQuery = '';
-  final NotificationService _notificationService = NotificationService();
   final _supabase = Supabase.instance.client;
 
   List<Quest> get quests {
@@ -28,6 +28,7 @@ class QuestProvider with ChangeNotifier {
     );
   }
 
+  List<Note> get notes => List.unmodifiable(_notes);
   String get username => _username;
   String? get avatarUrl => _avatarUrl;
   String get searchQuery => _searchQuery;
@@ -48,8 +49,8 @@ class QuestProvider with ChangeNotifier {
           .eq('id', userId)
           .single();
 
-      _username = data['full_name'] ?? 'Petualang';
-      _avatarUrl = data['avatar_url'];
+      _username = data['name'] ?? 'Petualang';
+      _avatarUrl = data['avatar'];
       notifyListeners();
     } catch (e) {
       debugPrint('Error fetching profile: $e');
@@ -67,7 +68,7 @@ class QuestProvider with ChangeNotifier {
 
       await _supabase
           .from('profiles')
-          .update({'full_name': newName})
+          .update({'name': newName})
           .eq('id', userId);
     } catch (e) {
       debugPrint('Error updating profile: $e');
@@ -103,7 +104,7 @@ class QuestProvider with ChangeNotifier {
       // Update database
       await _supabase
           .from('profiles')
-          .update({'avatar_url': publicUrl})
+          .update({'avatar': publicUrl})
           .eq('id', userId);
     } catch (e) {
       debugPrint('Error updating profile picture: $e');
@@ -134,18 +135,8 @@ class QuestProvider with ChangeNotifier {
       notifyListeners();
 
       await _supabase.from('quests').insert(quest.toMap());
-
-      if (quest.dueDate != null) {
-        _notificationService.scheduleNotification(
-          quest.id.hashCode,
-          'Misi Menanti!',
-          'Waktunya menyelesaikan: ${quest.title}',
-          quest.dueDate!,
-        );
-      }
     } catch (e) {
       debugPrint('Error adding quest: $e');
-      // Rollback on error would be ideal here
     }
   }
 
@@ -161,16 +152,6 @@ class QuestProvider with ChangeNotifier {
             .from('quests')
             .update(updatedQuest.toMap())
             .eq('id', updatedQuest.id);
-
-        _notificationService.cancelNotification(updatedQuest.id.hashCode);
-        if (updatedQuest.dueDate != null && !updatedQuest.isCompleted) {
-          _notificationService.scheduleNotification(
-            updatedQuest.id.hashCode,
-            'Misi Menanti!',
-            'Waktunya menyelesaikan: ${updatedQuest.title}',
-            updatedQuest.dueDate!,
-          );
-        }
       }
     } catch (e) {
       debugPrint('Error editing quest: $e');
@@ -192,19 +173,6 @@ class QuestProvider with ChangeNotifier {
             .from('quests')
             .update({'is_completed': newStatus})
             .eq('id', id);
-
-        if (newStatus) {
-          _notificationService.cancelNotification(quest.id.hashCode);
-        } else {
-          if (quest.dueDate != null) {
-            _notificationService.scheduleNotification(
-              quest.id.hashCode,
-              'Misi Menanti!',
-              'Waktunya menyelesaikan: ${quest.title}',
-              quest.dueDate!,
-            );
-          }
-        }
       }
     } catch (e) {
       debugPrint('Error toggling quest: $e');
@@ -218,9 +186,54 @@ class QuestProvider with ChangeNotifier {
       notifyListeners();
 
       await _supabase.from('quests').delete().eq('id', id);
-      _notificationService.cancelNotification(id.hashCode);
     } catch (e) {
       debugPrint('Error deleting quest: $e');
+    }
+  }
+
+  // --- Note Operations ---
+
+  Future<void> fetchNotes() async {
+    try {
+      final userId = _supabase.auth.currentUser?.id;
+      if (userId == null) return;
+
+      final data = await _supabase
+          .from('notes')
+          .select()
+          .order('updated_at', ascending: false);
+
+      _notes = (data as List).map((e) => Note.fromMap(e)).toList();
+      notifyListeners();
+    } catch (e) {
+      debugPrint('Error fetching notes: $e');
+    }
+  }
+
+  Future<void> upsertNote(Note note) async {
+    try {
+      final index = _notes.indexWhere((n) => n.id == note.id);
+      if (index != -1) {
+        _notes[index] = note;
+      } else {
+        _notes.insert(0, note);
+      }
+      notifyListeners();
+
+      await _supabase.from('notes').upsert(note.toMap());
+    } catch (e) {
+      debugPrint('Error upserting note: $e');
+    }
+  }
+
+  Future<void> deleteNote(String id) async {
+    try {
+      _notes.removeWhere((n) => n.id == id);
+      notifyListeners();
+
+      await _supabase.from('notes').delete().eq('id', id);
+    } catch (e) {
+      debugPrint('Error deleting note: $e');
     }
   }
 }

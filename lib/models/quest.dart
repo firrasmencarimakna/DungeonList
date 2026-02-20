@@ -1,9 +1,9 @@
 import 'package:uuid/uuid.dart';
 
 enum QuestDifficulty {
-  easy('Mudah'),
-  medium('Menengah'),
-  hard('Sulit');
+  easy('Rendah'),
+  medium('Sedang'),
+  hard('Tinggi');
 
   final String label;
   const QuestDifficulty(this.label);
@@ -15,7 +15,6 @@ class Quest {
   final String description;
   final QuestDifficulty difficulty;
   final bool isCompleted;
-  final DateTime? dueDate;
 
   Quest({
     String? id,
@@ -23,7 +22,6 @@ class Quest {
     this.description = '',
     required this.difficulty,
     this.isCompleted = false,
-    this.dueDate,
   }) : id = id ?? const Uuid().v4();
 
   Quest copyWith({
@@ -31,7 +29,6 @@ class Quest {
     String? description,
     QuestDifficulty? difficulty,
     bool? isCompleted,
-    DateTime? dueDate,
   }) {
     return Quest(
       id: id,
@@ -39,7 +36,6 @@ class Quest {
       description: description ?? this.description,
       difficulty: difficulty ?? this.difficulty,
       isCompleted: isCompleted ?? this.isCompleted,
-      dueDate: dueDate ?? this.dueDate,
     );
   }
 
@@ -52,7 +48,6 @@ class Quest {
       'description': description,
       'difficulty': difficulty.name, // 'easy', 'medium', 'hard'
       'is_completed': isCompleted,
-      'due_date': dueDate?.toIso8601String(),
     };
   }
 
@@ -66,7 +61,6 @@ class Quest {
         orElse: () => QuestDifficulty.easy,
       ),
       isCompleted: map['is_completed'] ?? false,
-      dueDate: map['due_date'] != null ? DateTime.parse(map['due_date']) : null,
     );
   }
 }

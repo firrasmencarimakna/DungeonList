@@ -1,13 +1,13 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:flutter_animate/flutter_animate.dart';
-import 'package:intl/intl.dart';
 import '../providers/provider.dart';
 import '../models/quest.dart';
 import '../widgets/add_quest.dart';
 import '../utils/style.dart';
 import '../utils/pixel_ui.dart';
 import 'profile.dart';
+import 'note.dart';
 
 enum QuestViewLayout { list, card, grid }
 
@@ -26,6 +26,7 @@ class _QuestLogScreenState extends State<QuestLogScreen> {
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) {
       context.read<QuestProvider>().fetchQuests();
+      context.read<QuestProvider>().fetchNotes();
     });
   }
 
@@ -33,247 +34,400 @@ class _QuestLogScreenState extends State<QuestLogScreen> {
   Widget build(BuildContext context) {
     return DefaultTabController(
       length: 2,
-      child: Scaffold(
-        appBar: AppBar(
-          centerTitle: true,
-          leading: PopupMenuButton<QuestViewLayout>(
-            icon: const Icon(Icons.grid_view, color: Colors.white),
-            onSelected: (layout) => setState(() => _viewLayout = layout),
-            itemBuilder: (context) => [
-              const PopupMenuItem(
-                value: QuestViewLayout.list,
-                child: Row(
-                  children: [
-                    Icon(Icons.list, color: Colors.blue),
-                    SizedBox(width: 12),
-                    Text('Tampilan Daftar'),
+      child: Builder(
+        builder: (context) {
+          return Scaffold(
+            appBar: AppBar(
+              centerTitle: true,
+              leading: PopupMenuButton<QuestViewLayout>(
+                icon: const Icon(Icons.grid_view, color: Colors.white),
+                onSelected: (layout) => setState(() => _viewLayout = layout),
+                itemBuilder: (context) => [
+                  const PopupMenuItem(
+                    value: QuestViewLayout.list,
+                    child: Row(
+                      children: [
+                        Icon(Icons.list, color: Colors.blue),
+                        SizedBox(width: 12),
+                        Text('Tampilan Daftar'),
+                      ],
+                    ),
+                  ),
+                  const PopupMenuItem(
+                    value: QuestViewLayout.card,
+                    child: Row(
+                      children: [
+                        Icon(Icons.view_agenda, color: Colors.blue),
+                        SizedBox(width: 12),
+                        Text('Tampilan Kartu'),
+                      ],
+                    ),
+                  ),
+                  const PopupMenuItem(
+                    value: QuestViewLayout.grid,
+                    child: Row(
+                      children: [
+                        Icon(Icons.grid_on, color: Colors.blue),
+                        SizedBox(width: 12),
+                        Text('Tampilan Kisi'),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+              title: Container(
+                height: 40,
+                width: 280, // Increased width for "Catatan" clarity
+                decoration: BoxDecoration(
+                  color: Colors.black12,
+                  borderRadius: BorderRadius.circular(30),
+                ),
+                child: TabBar(
+                  indicatorSize: TabBarIndicatorSize.tab,
+                  dividerColor: Colors.transparent,
+                  indicator: BoxDecoration(
+                    color: Theme.of(context).colorScheme.primary,
+                    borderRadius: BorderRadius.circular(30),
+                  ),
+                  labelColor: const Color.fromARGB(255, 249, 249, 249),
+                  unselectedLabelColor: const Color.fromARGB(
+                    255,
+                    255,
+                    255,
+                    255,
+                  ),
+                  labelStyle: const TextStyle(
+                    fontWeight: FontWeight.bold,
+                    fontSize: 14,
+                  ),
+                  tabs: const [
+                    Tab(text: 'Catatan'),
+                    Tab(text: 'Tugas'),
                   ],
                 ),
               ),
-              const PopupMenuItem(
-                value: QuestViewLayout.card,
-                child: Row(
-                  children: [
-                    Icon(Icons.view_agenda, color: Colors.blue),
-                    SizedBox(width: 12),
-                    Text('Tampilan Kartu'),
-                  ],
+              actions: [
+                Consumer<QuestProvider>(
+                  builder: (context, provider, child) {
+                    return Padding(
+                      padding: const EdgeInsets.only(right: 8.0),
+                      child: GestureDetector(
+                        onTap: () => Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (context) => const ProfileScreen(),
+                          ),
+                        ),
+                        child: CircleAvatar(
+                          radius: 18,
+                          backgroundColor: Theme.of(
+                            context,
+                          ).colorScheme.primary,
+                          backgroundImage: provider.avatarUrl != null
+                              ? NetworkImage(provider.avatarUrl!)
+                              : null,
+                          child: provider.avatarUrl == null
+                              ? const Icon(
+                                  Icons.person,
+                                  size: 20,
+                                  color: Colors.white,
+                                )
+                              : null,
+                        ),
+                      ),
+                    );
+                  },
                 ),
-              ),
-              const PopupMenuItem(
-                value: QuestViewLayout.grid,
-                child: Row(
-                  children: [
-                    Icon(Icons.grid_on, color: Colors.blue),
-                    SizedBox(width: 12),
-                    Text('Tampilan Kisi'),
-                  ],
-                ),
-              ),
-            ],
-          ),
-          title: Container(
-            height: 40,
-            width: 280, // Increased width for "Catatan" clarity
-            decoration: BoxDecoration(
-              color: Colors.black12,
-              borderRadius: BorderRadius.circular(30),
-            ),
-            child: TabBar(
-              indicatorSize: TabBarIndicatorSize.tab,
-              dividerColor: Colors.transparent,
-              indicator: BoxDecoration(
-                color: Theme.of(context).colorScheme.primary,
-                borderRadius: BorderRadius.circular(30),
-              ),
-              labelColor: Colors.white,
-              unselectedLabelColor: Colors.grey[700],
-              labelStyle: const TextStyle(
-                fontWeight: FontWeight.bold,
-                fontSize: 14,
-              ),
-              tabs: const [
-                Tab(text: 'Catatan'),
-                Tab(text: 'Tugas'),
               ],
             ),
-          ),
-          actions: [
-            Consumer<QuestProvider>(
-              builder: (context, provider, child) {
-                return Padding(
-                  padding: const EdgeInsets.only(right: 8.0),
-                  child: GestureDetector(
-                    onTap: () => Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                        builder: (context) => const ProfileScreen(),
-                      ),
-                    ),
-                    child: CircleAvatar(
-                      radius: 18,
-                      backgroundColor: Theme.of(context).colorScheme.primary,
-                      backgroundImage: provider.avatarUrl != null
-                          ? NetworkImage(provider.avatarUrl!)
-                          : null,
-                      child: provider.avatarUrl == null
-                          ? const Icon(
-                              Icons.person,
-                              size: 20,
-                              color: Colors.white,
-                            )
-                          : null,
-                    ),
+            body: Stack(
+              children: [
+                // Background Image
+                Positioned.fill(
+                  child: Image.asset(
+                    'assets/background/background1.gif',
+                    fit: BoxFit.cover,
                   ),
-                );
-              },
-            ),
-          ],
-        ),
-        body: Stack(
-          children: [
-            // Background Image
-            Positioned.fill(
-              child: Image.asset(
-                'assets/background/background1.gif',
-                fit: BoxFit.cover,
-              ),
-            ),
-            // Dark overlay to improve readability
-            Positioned.fill(
-              child: Container(color: Colors.black.withValues(alpha: 0.3)),
-            ),
-            // Content
-            Positioned.fill(
-              child: TabBarView(
-                children: [
-                  // Catatan Tab
-                  const Center(
-                    child: Text(
-                      'Fitur Catatan Segera Datang!',
-                      style: TextStyle(color: Colors.white70, fontSize: 18),
-                    ),
-                  ),
-                  // Tugas Tab
-                  Consumer<QuestProvider>(
-                    builder: (context, provider, child) {
-                      if (provider.quests.isEmpty) {
-                        return Center(
-                          child: Column(
-                            mainAxisAlignment: MainAxisAlignment.center,
-                            children: [
-                              const Icon(
-                                Icons.explore,
-                                size: 64,
-                                color: Colors.white54,
-                              ),
-                              const SizedBox(height: 16),
-                              Text(
-                                'Belum ada Misi!',
-                                style: withBorder(
-                                  Theme.of(context).textTheme.headlineSmall
-                                          ?.copyWith(color: Colors.white) ??
-                                      const TextStyle(),
-                                  outlineWidth: 1.0,
+                ),
+                // Dark overlay to improve readability
+                Positioned.fill(
+                  child: Container(color: Colors.black.withValues(alpha: 0.3)),
+                ),
+                // Content
+                Positioned.fill(
+                  child: TabBarView(
+                    children: [
+                      // Catatan Tab
+                      Consumer<QuestProvider>(
+                        builder: (context, provider, child) {
+                          if (provider.notes.isEmpty) {
+                            return const Center(
+                              child: Text(
+                                'Belum ada catatan!',
+                                style: TextStyle(
+                                  color: Colors.white70,
+                                  fontSize: 18,
                                 ),
-                                textAlign: TextAlign.center,
                               ),
-                            ],
-                          ),
-                        );
-                      }
+                            );
+                          }
 
-                      if (_viewLayout == QuestViewLayout.grid) {
-                        return GridView.builder(
-                          padding: const EdgeInsets.all(16),
-                          gridDelegate:
-                              const SliverGridDelegateWithFixedCrossAxisCount(
-                                crossAxisCount: 2,
-                                crossAxisSpacing: 12,
-                                mainAxisSpacing: 12,
-                                childAspectRatio:
-                                    0.85, // More compact aspect ratio
-                              ),
-                          itemCount: provider.quests.length,
-                          itemBuilder: (context, index) {
-                            final quest = provider.quests[index];
-                            return QuestCard(quest: quest, isCompact: true);
-                          },
-                        );
-                      }
-
-                      return ListView.builder(
-                        padding: const EdgeInsets.all(16),
-                        itemCount: provider.quests.length,
-                        itemBuilder: (context, index) {
-                          final quest = provider.quests[index];
-                          return QuestCard(
-                            quest: quest,
-                            isList: _viewLayout == QuestViewLayout.list,
+                          return ListView.builder(
+                            padding: const EdgeInsets.all(16),
+                            itemCount: provider.notes.length,
+                            itemBuilder: (context, index) {
+                              final note = provider.notes[index];
+                              return Padding(
+                                padding: const EdgeInsets.only(bottom: 12.0),
+                                child: PixelContainer(
+                                  pixelSize: 2,
+                                  borderColor: Colors.black,
+                                  backgroundColor: Colors.white.withValues(
+                                    alpha: 0.9,
+                                  ),
+                                  child: ListTile(
+                                    title: Text(
+                                      note.title.isEmpty
+                                          ? 'Tanpa Judul'
+                                          : note.title,
+                                      style: const TextStyle(
+                                        fontWeight: FontWeight.bold,
+                                      ),
+                                    ),
+                                    subtitle: Text(
+                                      note.content,
+                                      maxLines: 1,
+                                      overflow: TextOverflow.ellipsis,
+                                    ),
+                                    onTap: () => Navigator.push(
+                                      context,
+                                      MaterialPageRoute(
+                                        builder: (context) =>
+                                            NoteEditorScreen(note: note),
+                                      ),
+                                    ),
+                                    trailing: IconButton(
+                                      icon: const Icon(
+                                        Icons.delete_outline,
+                                        color: Colors.red,
+                                      ),
+                                      onPressed: () {
+                                        showDialog(
+                                          context: context,
+                                          builder: (context) => AlertDialog(
+                                            backgroundColor: Colors.transparent,
+                                            contentPadding: EdgeInsets.zero,
+                                            content: PixelContainer(
+                                              pixelSize: 2,
+                                              borderColor: Colors.black,
+                                              backgroundColor: Colors.white,
+                                              child: Padding(
+                                                padding: const EdgeInsets.all(
+                                                  20.0,
+                                                ),
+                                                child: Column(
+                                                  mainAxisSize:
+                                                      MainAxisSize.min,
+                                                  children: [
+                                                    const Text(
+                                                      'Yakin hapus?',
+                                                      style: TextStyle(
+                                                        fontWeight:
+                                                            FontWeight.bold,
+                                                        fontSize: 18,
+                                                      ),
+                                                    ),
+                                                    const SizedBox(height: 20),
+                                                    Row(
+                                                      mainAxisAlignment:
+                                                          MainAxisAlignment
+                                                              .spaceEvenly,
+                                                      children: [
+                                                        TextButton(
+                                                          onPressed: () =>
+                                                              Navigator.pop(
+                                                                context,
+                                                              ),
+                                                          child: const Text(
+                                                            'Batal',
+                                                            style: TextStyle(
+                                                              color:
+                                                                  Colors.grey,
+                                                            ),
+                                                          ),
+                                                        ),
+                                                        ElevatedButton(
+                                                          style: ElevatedButton.styleFrom(
+                                                            backgroundColor:
+                                                                Colors.red,
+                                                            foregroundColor:
+                                                                Colors.white,
+                                                            shape:
+                                                                const BeveledRectangleBorder(),
+                                                          ),
+                                                          onPressed: () {
+                                                            provider.deleteNote(
+                                                              note.id,
+                                                            );
+                                                            Navigator.pop(
+                                                              context,
+                                                            );
+                                                          },
+                                                          child: const Text(
+                                                            'Hapus',
+                                                          ),
+                                                        ),
+                                                      ],
+                                                    ),
+                                                  ],
+                                                ),
+                                              ),
+                                            ),
+                                          ),
+                                        );
+                                      },
+                                    ),
+                                  ),
+                                ),
+                              );
+                            },
                           );
                         },
-                      );
+                      ),
+                      // Tugas Tab
+                      Consumer<QuestProvider>(
+                        builder: (context, provider, child) {
+                          if (provider.quests.isEmpty) {
+                            return Center(
+                              child: Column(
+                                mainAxisAlignment: MainAxisAlignment.center,
+                                children: [
+                                  const Icon(
+                                    Icons.explore,
+                                    size: 64,
+                                    color: Colors.white54,
+                                  ),
+                                  const SizedBox(height: 16),
+                                  Text(
+                                    'Belum ada Misi!',
+                                    style: withBorder(
+                                      Theme.of(context).textTheme.headlineSmall
+                                              ?.copyWith(color: Colors.white) ??
+                                          const TextStyle(),
+                                      outlineWidth: 1.0,
+                                    ),
+                                    textAlign: TextAlign.center,
+                                  ),
+                                ],
+                              ),
+                            );
+                          }
+
+                          if (_viewLayout == QuestViewLayout.grid) {
+                            return GridView.builder(
+                              padding: const EdgeInsets.all(16),
+                              gridDelegate:
+                                  const SliverGridDelegateWithFixedCrossAxisCount(
+                                    crossAxisCount: 2,
+                                    crossAxisSpacing: 12,
+                                    mainAxisSpacing: 12,
+                                    childAspectRatio:
+                                        0.85, // More compact aspect ratio
+                                  ),
+                              itemCount: provider.quests.length,
+                              itemBuilder: (context, index) {
+                                final quest = provider.quests[index];
+                                return QuestCard(quest: quest, isCompact: true);
+                              },
+                            );
+                          }
+
+                          return ListView.builder(
+                            padding: const EdgeInsets.all(16),
+                            itemCount: provider.quests.length,
+                            itemBuilder: (context, index) {
+                              final quest = provider.quests[index];
+                              return QuestCard(
+                                quest: quest,
+                                isList: _viewLayout == QuestViewLayout.list,
+                              );
+                            },
+                          );
+                        },
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+            floatingActionButtonLocation:
+                FloatingActionButtonLocation.centerFloat,
+            floatingActionButton: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 16.0),
+              child: Row(
+                children: [
+                  Expanded(
+                    child: Container(
+                      height: 56,
+                      decoration: BoxDecoration(
+                        color: Colors.white.withValues(alpha: 0.9),
+                        borderRadius: BorderRadius.circular(40),
+                        boxShadow: [
+                          BoxShadow(
+                            color: Colors.black.withValues(alpha: 0.2),
+                            blurRadius: 8,
+                            offset: const Offset(0, 4),
+                          ),
+                        ],
+                      ),
+                      child: TextField(
+                        onChanged: (value) =>
+                            context.read<QuestProvider>().setSearchQuery(value),
+                        decoration: InputDecoration(
+                          hintText: 'Cari misi...',
+                          prefixIcon: const Icon(Icons.search),
+                          border: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(40),
+                            borderSide: BorderSide.none,
+                          ),
+                          contentPadding: const EdgeInsets.symmetric(
+                            horizontal: 20,
+                            vertical: 16,
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  PixelButton(
+                    onPressed: () {
+                      final tabController = DefaultTabController.of(context);
+                      if (tabController.index == 0) {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (context) => const NoteEditorScreen(),
+                          ),
+                        );
+                      } else {
+                        showModalBottomSheet(
+                          context: context,
+                          isScrollControlled: true,
+                          builder: (context) => const AddQuestSheet(),
+                        );
+                      }
                     },
+                    padding: const EdgeInsets.all(12),
+                    label: const Icon(Icons.add, color: Colors.white, size: 28),
+                    color: Theme.of(
+                      context,
+                    ).floatingActionButtonTheme.backgroundColor!,
                   ),
                 ],
               ),
             ),
-          ],
-        ),
-        // ... lines removed for brevity, will use specific target content below
-        floatingActionButtonLocation: FloatingActionButtonLocation.centerFloat,
-        floatingActionButton: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 16.0),
-          child: Row(
-            children: [
-              Expanded(
-                child: Container(
-                  height: 56,
-                  decoration: BoxDecoration(
-                    color: Colors.white.withValues(alpha: 0.9),
-                    borderRadius: BorderRadius.circular(40),
-                    boxShadow: [
-                      BoxShadow(
-                        color: Colors.black.withValues(alpha: 0.2),
-                        blurRadius: 8,
-                        offset: const Offset(0, 4),
-                      ),
-                    ],
-                  ),
-                  child: TextField(
-                    onChanged: (value) =>
-                        context.read<QuestProvider>().setSearchQuery(value),
-                    decoration: InputDecoration(
-                      hintText: 'Cari misi...',
-                      prefixIcon: const Icon(Icons.search),
-                      border: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(40),
-                        borderSide: BorderSide.none,
-                      ),
-                      contentPadding: const EdgeInsets.symmetric(
-                        horizontal: 20,
-                        vertical: 16,
-                      ),
-                    ),
-                  ),
-                ),
-              ),
-              const SizedBox(width: 12),
-              PixelButton(
-                onPressed: () => showModalBottomSheet(
-                  context: context,
-                  isScrollControlled: true,
-                  builder: (context) => const AddQuestSheet(),
-                ),
-                padding: const EdgeInsets.all(12),
-                label: const Icon(Icons.add, color: Colors.white, size: 28),
-                color: Theme.of(
-                  context,
-                ).floatingActionButtonTheme.backgroundColor!,
-              ),
-            ],
-          ),
-        ),
+          );
+        },
       ),
     );
   }
@@ -293,8 +447,6 @@ class QuestCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final dateFormat = DateFormat('d MMM HH:mm');
-
     return Padding(
           padding: EdgeInsets.only(bottom: isCompact ? 0 : 16),
           child: PixelContainer(
@@ -385,26 +537,6 @@ class QuestCard extends StatelessWidget {
                                   difficulty: quest.difficulty,
                                   isMin: true,
                                 ),
-                                if (quest.dueDate != null)
-                                  Row(
-                                    mainAxisSize: MainAxisSize.min,
-                                    children: [
-                                      Icon(
-                                        Icons.access_time_filled,
-                                        size: 10,
-                                        color: Colors.red[800],
-                                      ),
-                                      const SizedBox(width: 2),
-                                      Text(
-                                        dateFormat.format(quest.dueDate!),
-                                        style: TextStyle(
-                                          fontSize: 9,
-                                          fontWeight: FontWeight.bold,
-                                          color: Colors.red[800],
-                                        ),
-                                      ),
-                                    ],
-                                  ),
                               ],
                             ),
                           ],
@@ -476,27 +608,6 @@ class QuestCard extends StatelessWidget {
                             Row(
                               children: [
                                 _DifficultyBadge(difficulty: quest.difficulty),
-                                if (quest.dueDate != null) ...[
-                                  const SizedBox(width: 8),
-                                  Icon(
-                                    Icons.access_time_filled,
-                                    size: 14,
-                                    color: Colors.red[800],
-                                  ),
-                                  const SizedBox(width: 4),
-                                  Flexible(
-                                    child: Text(
-                                      dateFormat.format(quest.dueDate!),
-                                      maxLines: 1,
-                                      overflow: TextOverflow.ellipsis,
-                                      style: TextStyle(
-                                        fontSize: 12,
-                                        fontWeight: FontWeight.bold,
-                                        color: Colors.red[800],
-                                      ),
-                                    ),
-                                  ),
-                                ],
                               ],
                             ),
                           ],
@@ -545,7 +656,60 @@ class QuestCard extends StatelessWidget {
             builder: (context) => AddQuestSheet(quest: quest),
           );
         } else if (value == 'delete') {
-          context.read<QuestProvider>().deleteQuest(quest.id);
+          showDialog(
+            context: context,
+            builder: (context) => AlertDialog(
+              backgroundColor: Colors.transparent,
+              contentPadding: EdgeInsets.zero,
+              content: PixelContainer(
+                pixelSize: 2,
+                borderColor: Colors.black,
+                backgroundColor: Colors.white,
+                child: Padding(
+                  padding: const EdgeInsets.all(20.0),
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      const Text(
+                        'Yakin hapus?',
+                        style: TextStyle(
+                          fontWeight: FontWeight.bold,
+                          fontSize: 18,
+                        ),
+                      ),
+                      const SizedBox(height: 20),
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                        children: [
+                          TextButton(
+                            onPressed: () => Navigator.pop(context),
+                            child: const Text(
+                              'Batal',
+                              style: TextStyle(color: Colors.grey),
+                            ),
+                          ),
+                          ElevatedButton(
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: Colors.red,
+                              foregroundColor: Colors.white,
+                              shape: const BeveledRectangleBorder(),
+                            ),
+                            onPressed: () {
+                              context.read<QuestProvider>().deleteQuest(
+                                quest.id,
+                              );
+                              Navigator.pop(context);
+                            },
+                            child: const Text('Hapus'),
+                          ),
+                        ],
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+          );
         }
       },
       itemBuilder: (BuildContext context) {
