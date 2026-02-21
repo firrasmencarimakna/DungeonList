@@ -1,6 +1,8 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 
+import 'home.dart';
 import 'onboarding.dart';
 
 class SplashScreen extends StatefulWidget {
@@ -31,16 +33,27 @@ class _SplashScreenState extends State<SplashScreen> {
         });
       } else {
         _timer?.cancel();
-        // Wait for a moment after text is complete before navigating
-        Future.delayed(const Duration(seconds: 2), () {
-          if (mounted) {
-            Navigator.of(context).pushReplacement(
-              MaterialPageRoute(builder: (context) => const OnboardingScreen()),
-            );
-          }
+        Future.delayed(const Duration(seconds: 1), () {
+          if (mounted) _navigate();
         });
       }
     });
+  }
+
+  void _navigate() {
+    // Cek apakah user sudah login sebelumnya
+    final session = Supabase.instance.client.auth.currentSession;
+    if (session != null) {
+      // Sesi aktif → langsung ke HomeScreen
+      Navigator.of(context).pushReplacement(
+        MaterialPageRoute(builder: (context) => const QuestLogScreen()),
+      );
+    } else {
+      // Belum login → tampilkan onboarding
+      Navigator.of(context).pushReplacement(
+        MaterialPageRoute(builder: (context) => const OnboardingScreen()),
+      );
+    }
   }
 
   @override
@@ -52,24 +65,18 @@ class _SplashScreenState extends State<SplashScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(
-        0xFF212121,
-      ), // Dark background for retro feel
+      backgroundColor: const Color(0xFF212121),
       body: Center(
         child: Row(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Image.asset(
-              'assets/icon/splashicon.gif', // Verify this path matches actual file
-              width: 50, // Adjust size as needed
-              height: 50,
-            ),
+            Image.asset('assets/icon/splashicon.gif', width: 50, height: 50),
             const SizedBox(width: 20),
             Text(
               _displayText,
               style: const TextStyle(
                 color: Colors.white,
-                fontSize: 20, // Adjust size as needed
+                fontSize: 20,
                 letterSpacing: 2.0,
               ),
             ),

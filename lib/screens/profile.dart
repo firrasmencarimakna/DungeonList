@@ -449,6 +449,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                         ),
                         const SizedBox(height: 32),
 
+                        const SizedBox(height: 32),
                         // Stats Row
                         Row(
                           children: [
@@ -479,6 +480,40 @@ class _ProfileScreenState extends State<ProfileScreen> {
                               ),
                             ),
                           ],
+                        ),
+                        const SizedBox(height: 32),
+                        // Tombol Logout
+                        PixelButton(
+                          color: Colors.red[700]!,
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 32,
+                            vertical: 12,
+                          ),
+                          onPressed: () async {
+                            await context.read<QuestProvider>().signOut();
+                            if (context.mounted) {
+                              Navigator.of(
+                                context,
+                              ).pushNamedAndRemoveUntil('/', (route) => false);
+                            }
+                          },
+                          label: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              const Icon(Icons.logout, color: Colors.white),
+                              const SizedBox(width: 12),
+                              Text(
+                                'KELUAR',
+                                style: withBorder(
+                                  const TextStyle(
+                                    color: Colors.white,
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                  outlineWidth: 0,
+                                ),
+                              ),
+                            ],
+                          ),
                         ),
                       ],
                     );

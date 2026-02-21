@@ -25,6 +25,7 @@ class _QuestLogScreenState extends State<QuestLogScreen> {
   void initState() {
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) {
+      context.read<QuestProvider>().fetchProfile();
       context.read<QuestProvider>().fetchQuests();
       context.read<QuestProvider>().fetchNotes();
     });

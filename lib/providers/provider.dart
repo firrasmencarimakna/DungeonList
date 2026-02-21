@@ -40,20 +40,68 @@ class QuestProvider with ChangeNotifier {
 
   Future<void> fetchProfile() async {
     try {
-      final userId = _supabase.auth.currentUser?.id;
-      if (userId == null) return;
+      final user = _supabase.auth.currentUser;
+      if (user == null) {
+        debugPrint('fetchProfile: User is null');
+        return;
+      }
 
+      debugPrint('fetchProfile: Fetching for userId: ${user.id}');
+
+      // Coba ambil profil
       final data = await _supabase
           .from('profiles')
-          .select('full_name, avatar_url')
-          .eq('id', userId)
-          .single();
+          .select('name, avatar')
+          .eq('id', user.id)
+          .maybeSingle();
 
-      _username = data['name'] ?? 'Petualang';
-      _avatarUrl = data['avatar'];
+      debugPrint('fetchProfile: Received data: $data');
+
+      if (data == null) {
+        debugPrint('fetchProfile: Data is null, attempting upsert');
+        // User baru (misal dari Google Sign-In), buat profil otomatis
+        final displayName =
+            user.userMetadata?['full_name'] ??
+            user.userMetadata?['name'] ??
+            user.email?.split('@').first ??
+            'Petualang';
+        final googleAvatar =
+            user.userMetadata?['avatar_url'] ?? user.userMetadata?['picture'];
+
+        debugPrint('fetchProfile: Upserting with name: $displayName');
+
+        await _supabase.from('profiles').upsert({
+          'id': user.id,
+          'name': displayName,
+          'avatar': googleAvatar,
+        });
+
+        _username = displayName;
+        _avatarUrl = googleAvatar;
+      } else {
+        _username = data['name'] ?? 'Petualang';
+        final rawUrl = data['avatar'] as String?;
+        _avatarUrl = rawUrl != null
+            ? '$rawUrl?t=${DateTime.now().millisecondsSinceEpoch}'
+            : null;
+        debugPrint('fetchProfile: Set username to $_username');
+      }
       notifyListeners();
     } catch (e) {
       debugPrint('Error fetching profile: $e');
+    }
+  }
+
+  Future<void> signOut() async {
+    try {
+      await _supabase.auth.signOut();
+      _quests = [];
+      _notes = [];
+      _username = 'Petualang';
+      _avatarUrl = null;
+      notifyListeners();
+    } catch (e) {
+      debugPrint('Error signing out: $e');
     }
   }
 
@@ -71,7 +119,7 @@ class QuestProvider with ChangeNotifier {
           .update({'name': newName})
           .eq('id', userId);
     } catch (e) {
-      debugPrint('Error updating profile: $e');
+      debugPrint('Error updating username: $e');
     }
   }
 
@@ -97,18 +145,17 @@ class QuestProvider with ChangeNotifier {
           .from('avatars')
           .getPublicUrl(filePath);
 
-      // Optimistic update
-      _avatarUrl = publicUrl;
-      notifyListeners();
-
-      // Update database
+      // Update database dengan kolom yang benar
       await _supabase
           .from('profiles')
           .update({'avatar': publicUrl})
           .eq('id', userId);
+
+      // Update local state dengan cache-buster agar gambar langsung refresh
+      _avatarUrl = '$publicUrl?t=${DateTime.now().millisecondsSinceEpoch}';
+      notifyListeners();
     } catch (e) {
       debugPrint('Error updating profile picture: $e');
-      // Revert optimistic update on error
       await fetchProfile();
       rethrow;
     }
